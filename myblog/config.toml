@@ -1,0 +1,69 @@
+theme = "austere"
+# Site title.
+title = "Travis Haagen's Blog"
+# Site description.
+description = "Travis Haagen's blog for Software Engineers"
+# Base URL for your site.
+base_url = "https://travishaagen.github.io"
+# No SASS - CSS is internal (located in base.html template).
+compile_sass = false
+# Search index enabled.
+build_search_index = true
+# Default site language.
+default_language = "en"
+# Feeds.
+generate_feeds = true
+# Specify feed filenames.
+feed_filenames = ["atom.xml", "rss.xml"]
+# Taxonomies.
+taxonomies = [{ name = "tags", feed = true }]
+
+[search]
+# Required for search page to work.
+index_format = "fuse_javascript"
+
+[markdown]
+# Required for code highlighting blocks.
+highlight_code = true
+highlight_theme = "css"
+
+[slugify]
+# Controls slugification for page/section URLs.
+paths = "on"
+# Controls slugification for taxonomy terms (tags, categories, etc.).
+taxonomies = "on"
+# Controls slugification for heading anchors (H1 to H6 etc.).
+anchors = "on"
+
+[extra]
+# Keywords for SEO.
+keywords = "blog, software engineering, java, kotlin"
+# Site icon in header (optional - comment out to hide).
+site_icon = "quill.svg"
+# Header strapline (optional - comment out to hide).
+strapline = "for software engineers"
+# Footer text (optional - comment out to hide).
+footer_text = "© Travis Haagen"
+# Favicon (optional - comment out to hide).
+favicon = "/favicon.ico"
+# Profile picture on home page (optional - comment out to hide).
+profile_picture = "/images/profile.png"
+
+# Enable inline SVG icons (uses sprite sheet).
+inline_icons = true
+icon_path = "static/icons/"
+icons = ["light", "asleep", "rss"]
+
+# Responsive images
+image_format = "auto"
+image_quality = 80
+images_default_size = 1024
+images_sizes = [512, 1024, 2048]
+
+# Navigation menu.
+menu_links = [
+    { url = "$BASE_URL/", name = "Home" },
+    { url = "$BASE_URL/posts/", name = "Posts" },
+    { url = "$BASE_URL/tags/", name = "Tags" },
+    { url = "$BASE_URL/search/", name = "Search" },
+]
