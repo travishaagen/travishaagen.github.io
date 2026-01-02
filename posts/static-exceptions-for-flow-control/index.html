@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Static Exceptions, when used for flow control, can dramatically reduce garbage generation and latency in Java and Kotlin applications." />
+<meta name="keywords" content="blog, software engineering, java, kotlin" />
+<link rel="canonical" href="https://travishaagen.github.io/posts/static-exceptions-for-flow-control/" />
+
+<title>Static Exceptions for Flow Control | Travis Haagen&#x27;s Blog</title>
+<meta property="og:site_name" content="Travis Haagen&#x27;s Blog"/>
+<meta property="og:title" content="Static Exceptions for Flow Control | Travis Haagen&#x27;s Blog"/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://travishaagen.github.io/posts/static-exceptions-for-flow-control/"/>
+<meta property="og:description" content="Static Exceptions, when used for flow control, can dramatically reduce garbage generation and latency in Java and Kotlin applications."/>
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Static Exceptions for Flow Control"/>
+<meta name="twitter:description" content="Static Exceptions, when used for flow control, can dramatically reduce garbage generation and latency in Java and Kotlin applications."/>
+<link rel="alternate" type="application/atom+xml" title="Travis Haagen&#x27;s Blog" href="https://travishaagen.github.io/atom.xml">
+    <link rel="icon" href="&#x2F;favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet"></noscript>
+    <style>
+html{font-family:"Source Serif 4",Georgia,serif;font-size:1rem;line-height:1.7;margin:auto;max-width:100ch;padding:1.5rem 1em 3em}
+img{max-width:100%}img:not([src$=".svg"]),article>div,blockquote,pre{border-radius:.4rem}img[src$="#pixelate"]{image-rendering:pixelated}
+h1,h2,h3,h4,h5,h6{font-family:"Source Serif 4",Georgia,serif;font-weight:600;letter-spacing:-0.01em;margin:1.5rem 0 .75rem}
+h1{font-size:1.75rem}h2{font-size:1.375rem}h3{font-size:1.125rem}
+p{text-align:justify}p,ul,ol,article>footer,article>header{margin:0 0 1.5rem}
+pre,blockquote{padding:1.5rem;margin:0 0 1.5rem}pre{overflow-x:auto;font-size:.875rem;line-height:1.5}pre code{background:0!important;padding:0;font-size:inherit}code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.9em;padding:.15em .4em;border-radius:.25rem}blockquote>*:last-child{margin-bottom:0}
+article>img,article>p>img,article>div{display:block;margin-bottom:1.5rem;width:100%}
+.yt{aspect-ratio:16/9;width:100%;overflow:hidden}.yt iframe{width:100%;height:100%;border:0}
+.s{font-size:.85rem}
+.theme{display:inline-block;width:1.125rem;height:1.125rem;vertical-align:middle;margin-bottom:.15rem}.theme img,.theme svg{width:100%;height:100%}
+html.light .theme img:first-child,html.light .theme svg:first-child,html.dark .theme img:last-child,html.dark .theme svg:last-child{display:none}
+header strong{font-family:"Source Serif 4",Georgia,serif;font-weight:600;color:var(--accent)}.site-icon{width:2.25rem;height:2.25rem;vertical-align:middle;margin-right:1rem;color:var(--accent)}.header-brand{display:flex;align-items:center}.custom-icon{height:auto;max-height:3rem;width:auto;margin-right:1rem}body>footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+body>footer img,body>footer svg{width:1em;height:1em;vertical-align:-0.125em}
+.tags{list-style:none;padding:0;margin:.75rem 0 0;display:flex;flex-wrap:wrap;gap:.5rem 1rem}.tags li{display:inline}
+nav{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;margin-bottom:1.5rem}nav a{font-weight:500}nav img,nav svg{display:none}
+.p{list-style:none;padding:0;margin:0 0 1.5rem}.p li{display:flex;gap:1.5rem;margin-bottom:.75rem;align-items:baseline}.p li:last-child{margin-bottom:0}.p time{opacity:.7;flex-shrink:0}
+.profile-pic{width:8rem;height:8rem;border-radius:50%;object-fit:cover;display:block;margin:0 auto 1.5rem}
+.projects .project{margin-bottom:1.5rem}.project header{display:flex;align-items:baseline;gap:.75rem;margin-bottom:.75rem}.project header h2{margin:0;font-size:1.375rem}.project-emoji{font-size:1.5rem}.project-image{max-width:200px;aspect-ratio:1;object-fit:cover;float:right;margin:0 0 1.5rem 1.5rem;border-radius:.4rem}.project p{margin-bottom:.75rem}.project .tags{margin:0}
+.lb{position:fixed;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:999;cursor:pointer}.lb img{max-width:95vw;max-height:95vh}
+@media(max-width:30em){header .desc{display:none}}
+    </style>
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <style>
+    /* Light theme */
+    html.light{background:#FAF7F2;--tc:#FAF7F2;--accent:#B85450;--accent-hover:#7A3533;color:#1a1a1a}
+    html.light a{color:var(--accent);text-decoration:underline}
+    html.light a:visited{color:var(--accent)}
+    html.light a:hover{color:var(--accent-hover)}
+    html.light header>div>span>a{text-decoration:none}html.light header>div>span>a:hover{text-decoration:underline}
+    html.light p,html.light ul,html.light ol,html.light .desc{color:#3a3a3a}
+    html.light h1,html.light h2,html.light h3,html.light h4,html.light h5,html.light h6{color:#1a1a1a}
+    html.light strong{color:#1a1a1a}html.light header strong{color:var(--accent)}
+    html.light blockquote{border-left:3px solid var(--accent);color:#555}
+    html.light pre,html.light article>img,html.light article>p>img{background:#f0ebe3}
+    html.light code{background:#f0ebe3;color:#1a1a1a}
+    html.light hr{border-color:#e0d9ce}
+    /* Light syntax highlighting */
+    html.light .z-comment{color:#6a737d;font-style:italic}html.light .z-keyword{color:#d73a49}html.light .z-string{color:#22863a}html.light .z-number{color:#005cc5}html.light .z-function{color:#6f42c1}html.light .z-type{color:#005cc5}html.light .z-constant{color:#005cc5}html.light .z-variable{color:#e36209}html.light .z-attribute{color:#6f42c1}html.light .z-tag{color:#22863a}html.light .z-operator{color:#d73a49}html.light .z-punctuation{color:#24292e}html.light .z-builtin{color:#6f42c1}html.light .z-label{color:#005cc5}html.light .z-namespace{color:#e36209}
+    /* Dark theme */
+    html.dark{background:#141413;--tc:#141413;--accent:#E07A5F;--accent-hover:#F4A594;color:#e8e8e8}
+    html.dark a{color:var(--accent);text-decoration:underline}
+    html.dark a:visited{color:var(--accent)}
+    html.dark a:hover{color:var(--accent-hover)}
+    html.dark header>div>span>a{text-decoration:none}html.dark header>div>span>a:hover{text-decoration:underline}
+    html.dark p,html.dark ul,html.dark ol,html.dark .desc{color:#a0a0a0}
+    html.dark h1,html.dark h2,html.dark h3,html.dark h4,html.dark h5,html.dark h6{color:#fff}
+    html.dark strong{color:#fff}html.dark header strong{color:var(--accent)}
+    html.dark blockquote{border-left:3px solid var(--accent);color:#a0a0a0}
+    html.dark img[src$=".svg"],html.dark nav svg,html.dark .theme svg,html.dark footer svg{filter:invert(1)}
+    html.dark pre,html.dark article>img,html.dark article>p>img{background:#1e1e1d}
+    html.dark code{background:#1e1e1d;color:#e8e8e8}
+    html.dark hr{border-color:#2a2a29}
+    /* Dark syntax highlighting */
+    html.dark .z-comment{color:#8b949e;font-style:italic}html.dark .z-keyword{color:#ff7b72}html.dark .z-string{color:#a5d6ff}html.dark .z-number{color:#79c0ff}html.dark .z-function{color:#d2a8ff}html.dark .z-type{color:#79c0ff}html.dark .z-constant{color:#79c0ff}html.dark .z-variable{color:#ffa657}html.dark .z-attribute{color:#d2a8ff}html.dark .z-tag{color:#7ee787}html.dark .z-operator{color:#ff7b72}html.dark .z-punctuation{color:#c9d1d9}html.dark .z-builtin{color:#d2a8ff}html.dark .z-label{color:#79c0ff}html.dark .z-namespace{color:#ffa657}
+    /* Shared styles */
+    a.active{color:var(--accent)}
+    a:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:2px}
+    hr{border:0;border-top:1px solid;clear:both;margin:1.5rem 0}
+    blockquote{border-left:3px solid var(--accent);padding-left:1.25rem;font-style:italic}
+    .skip-link{position:absolute;top:-100%;left:0;padding:.5rem 1rem;background:var(--accent);color:#fff;z-index:1000}.skip-link:focus{top:0}
+    </style>
+    <meta name="theme-color" id="tc"><script>(function(){var m=matchMedia('(prefers-color-scheme:dark)'),t=localStorage.theme||(m.matches?'dark':'light'),h=document.documentElement,c=document.getElementById('tc');h.className=t;function u(){c.content=getComputedStyle(h).getPropertyValue('--tc')}u();window.T=function(){t=t==='dark'?'light':'dark';localStorage.theme=t;h.className=t;u()}})()</script>
+    
+</head>
+<body>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="light" viewBox="0 0 32 32"><rect x="15" y="2" width="2" height="5"/><rect x="21.6675" y="6.8536" width="4.958" height="1.9998" transform="translate(1.5191 19.3744) rotate(-45)"/><rect x="25" y="15" width="5" height="2"/><rect x="23.1466" y="21.6675" width="1.9998" height="4.958" transform="translate(-10.0018 24.1465) rotate(-45)"/><rect x="15" y="25" width="2" height="5"/><rect x="5.3745" y="23.1466" width="4.958" height="1.9998" transform="translate(-14.7739 12.6256) rotate(-45)"/><rect x="2" y="15" width="5" height="2"/><rect x="6.8536" y="5.3745" width="1.9998" height="4.958" transform="translate(-3.253 7.8535) rotate(-45)"/><path d="M16,12a4,4,0,1,1-4,4,4.0045,4.0045,0,0,1,4-4m0-2a6,6,0,1,0,6,6,6,6,0,0,0-6-6Z"/></symbol>
+<symbol id="asleep" viewBox="0 0 32 32"><path d="M13.5025,5.4136A15.0755,15.0755,0,0,0,25.096,23.6082a11.1134,11.1134,0,0,1-7.9749,3.3893c-.1385,0-.2782.0051-.4178,0A11.0944,11.0944,0,0,1,13.5025,5.4136M14.98,3a1.0024,1.0024,0,0,0-.1746.0156A13.0959,13.0959,0,0,0,16.63,28.9973c.1641.006.3282,0,.4909,0a13.0724,13.0724,0,0,0,10.702-5.5556,1.0094,1.0094,0,0,0-.7833-1.5644A13.08,13.08,0,0,1,15.8892,4.38,1.0149,1.0149,0,0,0,14.98,3Z"/></symbol>
+<symbol id="rss" viewBox="0 0 32 32"><path d="M8,18c-3.3,0-6,2.7-6,6s2.7,6,6,6s6-2.7,6-6C14,20.7,11.3,18,8,18z M8,28c-2.2,0-4-1.8-4-4s1.8-4,4-4s4,1.8,4,4C12,26.2,10.2,28,8,28z"/><path d="M30,24h-2C28,13,19,4,8,4V2C20.1,2,30,11.9,30,24z"/><path d="M22,24h-2c0-6.6-5.4-12-12-12v-2C15.7,10,22,16.3,22,24z"/></symbol>
+</svg>
+
+    <header>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="header-brand"><svg class="site-icon" viewBox="-116.42 -116.42 596.66 596.66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><mask id="m"><rect x="-116.42" y="-116.42" width="596.66" height="596.66" fill="white"/><path fill="black" transform="translate(181.91,181.91) scale(1.25) translate(-181.91,-181.91)" d="M358.872,0.841c-3.196-1.538-7.014-0.931-9.572,1.526c-19.515,18.728-53.141,46.415-102.511,71.961c-2.159,1.118-3.737,3.106-4.333,5.463c-4.028,15.908-11.933,33.271-23.492,51.607l-4.705,7.462l8.772-38.205c0.715-3.115-0.378-6.368-2.828-8.42c-2.451-2.052-5.846-2.556-8.786-1.303l-1.015,0.428C110.79,133.291,81.352,198.24,72.67,233.22c-3.013,12.141-4.516,24.163-4.465,35.738c0.02,4.466,0.272,8.722,0.75,12.705l-66.39,67.703c-3.211,3.273-3.246,8.505-0.078,11.822c1.667,1.745,3.904,2.629,6.149,2.629c2.02,0,4.045-0.717,5.664-2.164l182.428-163.851c0.896,0.059-103.874,109.806-102.925,109.806c14.22,0,33.863-6.555,56.804-18.95c30.935-16.717,65.508-42.37,99.979-74.185c2.832-2.612,3.551-6.805,1.753-10.213c-1.798-3.407-5.662-5.181-9.42-4.315l-21.363,4.904l7.465-4.706c20.835-13.136,40.313-21.511,57.891-24.897c1.901-0.367,3.622-1.372,4.875-2.849c41.348-48.75,58.853-96.919,66.256-128.743c2.69-11.567,4.579-23.134,5.607-34.38C363.972,5.742,362.069,2.379,358.872,0.841z"/></mask></defs><rect x="-116.42" y="-116.42" width="596.66" height="596.66" rx="298.33" fill="currentColor" mask="url(#m)"/></svg><a href="https://travishaagen.github.io"><strong>Travis Haagen&#x27;s Blog</strong></a><span class="desc"> · for software engineers</span></span>
+            <a href="#" onclick="T();return false" class="theme" aria-label="Toggle theme" title="Toggle theme">
+<svg><use href="#light"/></svg>
+<svg><use href="#asleep"/></svg></a>
+        </div>
+        <hr>
+        <nav>
+            <a href="https://travishaagen.github.io/">Home</a>
+            <a href="https://travishaagen.github.io/posts/" class="active">Posts</a>
+            <a href="https://travishaagen.github.io/tags/">Tags</a>
+            <a href="https://travishaagen.github.io/search/">Search</a>
+            </nav>
+    </header>
+    <hr>
+    <main id="main">
+    
+<article>
+  <header>
+    <h1>Static Exceptions for Flow Control</h1>
+    <time class="s" datetime="2026-01-02">02 Jan 2026</time>
+  </header>
+  
+  <p>Static Exceptions, when used for flow control, can dramatically reduce garbage generation and latency in Java and Kotlin
+applications.</p>
+<h2 id="tl-dr">TL;DR</h2>
+<p>To create high performance exceptions for flow control in the JVM, simply extend the following <code>StaticException</code> class.
+Then store the <code>Exception</code> instance in a <code>static final</code> field and throw it as needed. They're fast, because the call
+stack doesn't need to be traversed and since we're creating reusable objects, there's less for the garbage collector
+to do.</p>
+<p>Java:</p>
+<pre data-lang="java" class="language-java z-code"><code class="language-java" data-lang="java"><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-storage z-modifier z-java">public</span> <span class="z-storage z-modifier z-java">abstract</span> <span class="z-meta z-class z-identifier z-java"><span class="z-storage z-type z-java">class</span> <span class="z-entity z-name z-class z-java">StaticException</span></span> <span class="z-meta z-class z-extends z-java"><span class="z-keyword z-declaration z-extends z-java">extends</span> <span class="z-entity z-other z-inherited-class z-java">RuntimeException</span> </span><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span>
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">    <span class="z-storage z-modifier z-java">private</span> <span class="z-storage z-modifier z-java">static</span> <span class="z-storage z-modifier z-java">final</span> <span class="z-support z-class z-java">StackTraceElement</span><span class="z-storage z-modifier z-array z-java">[]</span> <span class="z-meta z-field z-java">emptyStackTrace</span> <span class="z-meta z-assignment z-rhs z-java"><span class="z-keyword z-operator z-assignment z-java">=</span> <span class="z-meta z-instantiation z-java"><span class="z-keyword z-other z-storage z-new z-java">new</span> <span class="z-support z-class z-java">StackTraceElement</span><span class="z-meta z-brackets z-array-initialization z-java"><span class="z-punctuation z-section z-brackets z-begin z-java">[</span><span class="z-constant z-numeric z-integer z-decimal z-java">0</span><span class="z-punctuation z-section z-brackets z-end z-java">]</span></span></span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">    <span class="z-storage z-modifier z-java">public</span> <span class="z-meta z-method z-java"><span class="z-meta z-method z-identifier z-java"><span class="z-entity z-name z-function z-constructor z-java">StaticException</span></span><span class="z-meta z-method z-parameters z-java"><span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-support z-class z-java">String</span> <span class="z-variable z-parameter z-java">message</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span></span> <span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span></span></span></span><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">        <span class="z-variable z-language z-java">super</span><span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span>message<span class="z-punctuation z-separator z-comma z-java">,</span> <span class="z-constant z-language z-java">null</span><span class="z-punctuation z-separator z-comma z-java">,</span> <span class="z-constant z-language z-java">false</span><span class="z-punctuation z-separator z-comma z-java">,</span> <span class="z-constant z-language z-java">true</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">        <span class="z-meta z-function-call z-java"><span class="z-variable z-function z-java">setStackTrace</span><span class="z-punctuation z-section z-parens z-begin z-java">(</span>emptyStackTrace<span class="z-punctuation z-section z-parens z-end z-java">)</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">    <span class="z-punctuation z-section z-block z-end z-java">}</span></span></span>
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">    <span class="z-meta z-annotation z-java"><span class="z-punctuation z-definition z-annotation z-java">@</span></span><span class="z-meta z-annotation z-java"><span class="z-meta z-annotation z-identifier z-java"><span class="z-variable z-annotation z-java">Override</span>
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-annotation z-java"><span class="z-meta z-annotation z-identifier z-java">    </span></span><span class="z-storage z-modifier z-java">public</span> <span class="z-storage z-modifier z-java">synchronized</span> <span class="z-support z-class z-java">Throwable</span> <span class="z-meta z-method z-java"><span class="z-meta z-method z-identifier z-java"><span class="z-entity z-name z-function z-java">fillInStackTrace</span></span><span class="z-meta z-method z-parameters z-java"><span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span></span> <span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span></span></span></span><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">        <span class="z-keyword z-control z-flow z-return z-java">return</span> <span class="z-variable z-language z-java">this</span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">    <span class="z-punctuation z-section z-block z-end z-java">}</span></span></span>
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-end z-java">}</span></span></span></span>
+</span></code></pre>
+<p>Kotlin:</p>
+<pre data-lang="kotlin" class="language-kotlin z-code"><code class="language-kotlin" data-lang="kotlin"><span class="z-source z-Kotlin"><span class="z-storage z-modifier z-kotlin">abstract</span> <span class="z-storage z-modifier z-kotlin">class</span> <span class="z-entity z-name z-type z-class z-kotlin">StaticException</span>(
+</span><span class="z-source z-Kotlin">    <span class="z-variable z-parameter z-function z-kotlin">message</span><span class="z-keyword z-operator z-declaration z-kotlin">:</span> <span class="z-storage z-type z-buildin z-kotlin">String</span>,
+</span><span class="z-source z-Kotlin">) <span class="z-keyword z-operator z-declaration z-kotlin">:</span> <span class="z-entity z-other z-inherited-class z-kotlin">RuntimeException</span>(message, <span class="z-constant z-language z-kotlin">null</span>, <span class="z-constant z-language z-kotlin">false</span>, <span class="z-constant z-language z-kotlin">true</span>) {
+</span><span class="z-source z-Kotlin">
+</span><span class="z-source z-Kotlin">    <span class="z-storage z-modifier z-kotlin">companion </span><span class="z-storage z-modifier z-kotlin">object</span> {
+</span><span class="z-source z-Kotlin">        <span class="z-storage z-modifier z-kotlin">private</span> <span class="z-keyword z-other z-kotlin">val</span> <span class="z-entity z-name z-variable z-kotlin">emptyStackTrace</span> <span class="z-keyword z-operator z-assignment z-kotlin">=</span> arrayOf&lt;StackTraceElement&gt;()
+</span><span class="z-source z-Kotlin">    }
+</span><span class="z-source z-Kotlin">
+</span><span class="z-source z-Kotlin">    init {
+</span><span class="z-source z-Kotlin">        stackTrace <span class="z-keyword z-operator z-assignment z-kotlin">=</span> emptyStackTrace
+</span><span class="z-source z-Kotlin">    }
+</span><span class="z-source z-Kotlin">
+</span><span class="z-source z-Kotlin">    <span class="z-storage z-modifier z-kotlin">override</span> <span class="z-keyword z-other z-kotlin">fun</span> <span class="z-entity z-name z-function z-kotlin">fillInStackTrace</span>()<span class="z-keyword z-operator z-declaration z-kotlin">:</span> Throwable {
+</span><span class="z-source z-Kotlin">        <span class="z-keyword z-control z-kotlin">return</span> <span class="z-constant z-language z-kotlin">this</span>
+</span><span class="z-source z-Kotlin">    }
+</span><span class="z-source z-Kotlin">}
+</span></code></pre>
+<h2 id="example-use-case">Example Use Case</h2>
+<p>In a web application, conditions that trigger HTTP error responses can happen anywhere in the call chain. For example,
+the client's bearer token has expired, so we return <code>401 Unauthorized</code>. A request is malformed, so validation
+logic returns <code>400 Bad Request</code>. Likewise, deeper in the call chain, an asynchronous API call times out, so we return
+<code>503 Service Unavailable</code>. None of these error conditions are particularly unexpected, and aside from the timeout,
+may not even warrant logging.</p>
+<p>For JVM applications it can be convenient to throw an exception that signifies "respond with an error". When the
+exception is caught, we build the appropriate HTTP response. An example response exception might be,</p>
+<pre data-lang="java" class="language-java z-code"><code class="language-java" data-lang="java"><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-storage z-modifier z-java">public</span> <span class="z-meta z-class z-identifier z-java"><span class="z-storage z-type z-java">class</span> <span class="z-entity z-name z-class z-java">ResponseException</span></span> <span class="z-meta z-class z-extends z-java"><span class="z-keyword z-declaration z-extends z-java">extends</span> <span class="z-entity z-other z-inherited-class z-java">RuntimeException</span> </span><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span>
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">    <span class="z-storage z-modifier z-java">public</span> <span class="z-storage z-modifier z-java">final</span> <span class="z-storage z-type z-primitive z-java">int</span> <span class="z-meta z-field z-java">statusCode</span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java">    <span class="z-storage z-modifier z-java">public</span> <span class="z-meta z-method z-java"><span class="z-meta z-method z-identifier z-java"><span class="z-entity z-name z-function z-constructor z-java">ResponseException</span></span><span class="z-meta z-method z-parameters z-java"><span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-support z-class z-java">String</span> <span class="z-variable z-parameter z-java">message</span><span class="z-punctuation z-separator z-comma z-java">,</span> <span class="z-storage z-type z-primitive z-java">int</span> <span class="z-variable z-parameter z-java">statusCode</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span></span> <span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span></span></span></span><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">        <span class="z-variable z-language z-java">super</span><span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span>message<span class="z-punctuation z-section z-parens z-end z-java">)</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">        <span class="z-variable z-language z-java">this</span><span class="z-punctuation z-accessor z-dot z-java">.</span>statusCode <span class="z-meta z-assignment z-rhs z-java"><span class="z-keyword z-operator z-assignment z-java">=</span> statusCode</span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-meta z-method z-java"><span class="z-meta z-method z-body z-java">    <span class="z-punctuation z-section z-block z-end z-java">}</span></span></span>
+</span></span></span></span><span class="z-source z-java"><span class="z-meta z-class z-java"><span class="z-meta z-class z-body z-java"><span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-end z-java">}</span></span></span></span>
+</span></code></pre>
+<p>Which could be caught in our web controller logic, or a framework mechanism such as a Spring
+<a href="https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-exceptionhandler.html">@ExceptionHandler</a>,
+where the appropriate HTTP response status header and payload body would be constructed,</p>
+<pre data-lang="json" class="language-json z-code"><code class="language-json" data-lang="json"><span class="z-source z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-json">  </span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>code<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span> </span><span class="z-meta z-mapping z-value z-json"><span class="z-constant z-numeric z-integer z-decimal z-json">400</span><span class="z-punctuation z-separator z-mapping z-pair z-json">,</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json">  </span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>message<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-value z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span> </span><span class="z-meta z-mapping z-value z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>Bad Request<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-punctuation z-section z-mapping z-end z-json">}</span></span>
+</span></code></pre>
+<h2 id="discussion">Discussion</h2>
+<p>We're using exceptions for <em>flow control</em>. Unfortunately, from a performance perspective, exceptions are expensive.
+The bulk of the cost comes from <code>Throwable.fillInStackTrace()</code> which traverses the
+<a href="https://en.wikipedia.org/wiki/Call_stack">call stack</a>, and is exacerbated by <strong>massively</strong> long call stacks created by
+libraries and frameworks that we use to make life easier.</p>
+<p>Fortunately, there is a solution. We can preinitialize exceptions and either generate the call stack <em>once</em>, or
+provide an empty stack. I first learned about this technique from Norman Maurer's blog post
+entitled “<a href="http://normanmaurer.me/blog/2013/11/09/The-hidden-performance-costs-of-instantiating-Throwables/">The hidden performance costs of instantiating Throwables</a>”.
+Norman is one of the creators of <a href="https://github.com/netty/netty">Netty</a> which is an abstraction over Java's internal
+sockets and byte buffers. It's a technique that has been used sparingly in Netty itself.</p>
+<p>However, if you do it wrong, it can lead to problems. Let's look at this constructor for <code>Throwable</code>,</p>
+<pre data-lang="java" class="language-java z-code"><code class="language-java" data-lang="java"><span class="z-source z-java"><span class="z-storage z-modifier z-java">protected</span> <span class="z-meta z-function-call z-java"><span class="z-variable z-function z-java">Throwable</span><span class="z-punctuation z-section z-parens z-begin z-java">(</span>
+</span></span><span class="z-source z-java"><span class="z-meta z-function-call z-java">    <span class="z-support z-class z-java">String</span> message<span class="z-punctuation z-separator z-comma z-java">,</span>
+</span></span><span class="z-source z-java"><span class="z-meta z-function-call z-java">    <span class="z-support z-class z-java">Throwable</span> cause<span class="z-punctuation z-separator z-comma z-java">,</span>
+</span></span><mark><span class="z-source z-java"><span class="z-meta z-function-call z-java">    <span class="z-storage z-type z-primitive z-java">boolean</span> enableSuppression<span class="z-punctuation z-separator z-comma z-java">,</span>
+</span></span></mark><span class="z-source z-java"><span class="z-meta z-function-call z-java">    <span class="z-storage z-type z-primitive z-java">boolean</span> writableStackTrace
+</span></span><span class="z-source z-java"><span class="z-meta z-function-call z-java"><span class="z-punctuation z-section z-parens z-end z-java">)</span></span> <span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">    <span class="z-keyword z-control z-conditional z-if z-java">if</span> <span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span>writableStackTrace<span class="z-punctuation z-section z-parens z-end z-java">)</span></span> <span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span>
+</span></span></span><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-meta z-block z-java">        <span class="z-meta z-function-call z-java"><span class="z-variable z-function z-java">fillInStackTrace</span><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-meta z-block z-java">    <span class="z-punctuation z-section z-block z-end z-java">}</span></span> <span class="z-keyword z-control z-conditional z-else z-java">else</span> <span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span>
+</span></span></span><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-meta z-block z-java">        stackTrace <span class="z-meta z-assignment z-rhs z-java"><span class="z-keyword z-operator z-assignment z-java">=</span> <span class="z-constant z-language z-java">null</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-meta z-block z-java">    <span class="z-punctuation z-section z-block z-end z-java">}</span></span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">    detailMessage <span class="z-meta z-assignment z-rhs z-java"><span class="z-keyword z-operator z-assignment z-java">=</span> message</span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">    <span class="z-variable z-language z-java">this</span><span class="z-punctuation z-accessor z-dot z-java">.</span>cause <span class="z-meta z-assignment z-rhs z-java"><span class="z-keyword z-operator z-assignment z-java">=</span> cause</span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span><mark><span class="z-source z-java"><span class="z-meta z-block z-java">    <span class="z-keyword z-control z-conditional z-if z-java">if</span> <span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-keyword z-operator z-logical z-java">!</span>enableSuppression<span class="z-punctuation z-section z-parens z-end z-java">)</span></span> <span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span>
+</span></span></span></mark><mark><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-meta z-block z-java">        suppressedExceptions <span class="z-meta z-assignment z-rhs z-java"><span class="z-keyword z-operator z-assignment z-java">=</span> <span class="z-constant z-language z-java">null</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span></mark><mark><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-meta z-block z-java">    <span class="z-punctuation z-section z-block z-end z-java">}</span></span>
+</span></span></mark><span class="z-source z-java"><span class="z-meta z-block z-java">    <span class="z-keyword z-control z-conditional z-if z-java">if</span> <span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span>jfrTracing<span class="z-punctuation z-section z-parens z-end z-java">)</span></span> <span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span>
+</span></span></span><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-meta z-block z-java">        <span class="z-support z-class z-java">ThrowableTracer</span><span class="z-punctuation z-accessor z-dot z-java">.</span><span class="z-meta z-function-call z-java"><span class="z-variable z-function z-java">traceThrowable</span><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-meta z-function-call z-java"><span class="z-variable z-function z-java">getClass</span><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span><span class="z-punctuation z-separator z-comma z-java">,</span> message<span class="z-punctuation z-section z-parens z-end z-java">)</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></span><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-meta z-block z-java">    <span class="z-punctuation z-section z-block z-end z-java">}</span></span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-end z-java">}</span></span>
+</span></code></pre>
+<p>It's most essential that we set <code>enableSuppression</code> to <code>false</code>. Otherwise, our own code or magical side effects from
+libraries could invoke the <code>addSuppressed</code> method, and potentially add objects to the <code>suppressedExceptions</code>
+collection <strong>every time</strong> we throw the reusable exception. The collection would grow infinitely.</p>
+<pre data-lang="java" class="language-java z-code"><code class="language-java" data-lang="java"><span class="z-source z-java"><span class="z-storage z-modifier z-java">public</span> <span class="z-storage z-modifier z-java">final</span> <span class="z-storage z-modifier z-java">synchronized</span> void <span class="z-meta z-function-call z-java"><span class="z-variable z-function z-java">addSuppressed</span><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-support z-class z-java">Throwable</span> exception<span class="z-punctuation z-section z-parens z-end z-java">)</span></span> <span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-begin z-java">{</span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">    <span class="z-keyword z-control z-conditional z-if z-java">if</span> <span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span>exception <span class="z-keyword z-operator z-comparison z-java">==</span> <span class="z-variable z-language z-java">this</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">        <span class="z-keyword z-control z-flow z-throw z-java">throw</span> <span class="z-meta z-instantiation z-java"><span class="z-keyword z-other z-storage z-new z-java">new</span> <span class="z-support z-class z-java">IllegalArgumentException</span><span class="z-meta z-parens z-constructor-arguments z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-constant z-other z-java">SELF_SUPPRESSION_MESSAGE</span><span class="z-punctuation z-separator z-comma z-java">,</span> exception<span class="z-punctuation z-section z-parens z-end z-java">)</span></span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">    <span class="z-support z-class z-java">Objects</span><span class="z-punctuation z-accessor z-dot z-java">.</span><span class="z-meta z-function-call z-java"><span class="z-variable z-function z-java">requireNonNull</span><span class="z-punctuation z-section z-parens z-begin z-java">(</span>exception<span class="z-punctuation z-separator z-comma z-java">,</span> <span class="z-constant z-other z-java">NULL_CAUSE_MESSAGE</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">
+</span></span><mark><span class="z-source z-java"><span class="z-meta z-block z-java">    <span class="z-keyword z-control z-conditional z-if z-java">if</span> <span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span>suppressedExceptions <span class="z-keyword z-operator z-comparison z-java">==</span> <span class="z-constant z-language z-java">null</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span> <span class="z-comment z-line z-double-slash z-java"><span class="z-punctuation z-definition z-comment z-java">//</span> Suppressed exceptions not recorded
+</span></span></span></mark><mark><span class="z-source z-java"><span class="z-meta z-block z-java">        <span class="z-keyword z-control z-flow z-return z-java">return</span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></mark><span class="z-source z-java"><span class="z-meta z-block z-java">
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">    <span class="z-keyword z-control z-conditional z-if z-java">if</span> <span class="z-meta z-parens z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span>suppressedExceptions <span class="z-keyword z-operator z-comparison z-java">==</span> <span class="z-constant z-other z-java">SUPPRESSED_SENTINEL</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">        suppressedExceptions <span class="z-meta z-assignment z-rhs z-java"><span class="z-keyword z-operator z-assignment z-java">=</span> <span class="z-meta z-instantiation z-java"><span class="z-keyword z-other z-storage z-new z-java">new</span> <span class="z-support z-class z-java">ArrayList</span><span class="z-punctuation z-definition z-generic z-diamond z-java">&lt;&gt;</span><span class="z-meta z-parens z-constructor-arguments z-java"><span class="z-punctuation z-section z-parens z-begin z-java">(</span><span class="z-constant z-numeric z-integer z-decimal z-java">1</span><span class="z-punctuation z-section z-parens z-end z-java">)</span></span></span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span><span class="z-source z-java"><span class="z-meta z-block z-java">
+</span></span><mark><span class="z-source z-java"><span class="z-meta z-block z-java">    suppressedExceptions<span class="z-punctuation z-accessor z-dot z-java">.</span><span class="z-meta z-function-call z-java"><span class="z-variable z-function z-java">add</span><span class="z-punctuation z-section z-parens z-begin z-java">(</span>exception<span class="z-punctuation z-section z-parens z-end z-java">)</span></span><span class="z-punctuation z-terminator z-java">;</span>
+</span></span></mark><span class="z-source z-java"><span class="z-meta z-block z-java"><span class="z-punctuation z-section z-block z-end z-java">}</span></span>
+</span></code></pre>
+<p>This happened to me (<code>:faceplant:</code>). It turns out that <a href="https://projectreactor.io/docs">Project Reactor</a> invokes
+<code>addSuppressed</code> in a class called
+<a href="https://github.com/travishaagen/reactor-core/blob/main/reactor-core/src/main/java/reactor/core/publisher/FluxOnAssembly.java#L588">FluxOnAssembly</a>
+every time an <code>Exception</code> passes through.</p>
+<h2 id="benchmarks">Benchmarks</h2>
+<p>Norman included some <a href="https://github.com/openjdk/jmh">Java Microbenchmark Harness (JMH)</a> results in the
+beforementioned <a href="http://normanmaurer.me/blog/2013/11/09/The-hidden-performance-costs-of-instantiating-Throwables/">blog post</a>.
+I also ran across
+“<a href="https://www.javaspring.net/blog/consuming-stack-traces-noticeably-slower-in-java-11-than-java-8/">Why Consuming Stack Traces is Noticeably Slower in Java 11 Compared to Java 8: JMH Benchmark Results.</a>”
+It makes some interesting points and I didn't realize that Java 11 introduced a change that was meant to improve
+average performance by lazily traversing the call stack for logging. Because of this lazy traversal, I included
+some additional <code>*AndGetStacktrace</code> JMH benchmarks below.</p>
+<pre data-lang="text" class="language-text z-code"><code class="language-text" data-lang="text"><span class="z-text z-plain">Benchmark                         Mode  Cnt           Score         Error  Units
+</span><span class="z-text z-plain">staticException                  thrpt    5  1799330562.898 ± 3931377.639  ops/s
+</span><span class="z-text z-plain">staticExceptionAndGetStacktrace  thrpt    5   105525288.622 ±  404717.391  ops/s
+</span><span class="z-text z-plain">newException                     thrpt    5     1529637.197 ±    2700.762  ops/s
+</span><span class="z-text z-plain">newExceptionAndGetStacktrace     thrpt    5      328081.037 ±    1212.503  ops/s
+</span></code></pre>
+<p>To summarize,</p>
+<ol>
+<li>Throwing and catching a reusable <code>StaticException</code> reached 1,799,330,563 operations/second</li>
+<li>Reusable <code>StaticException</code> followed by a call to <code>e.getStackTrace()</code> was 105,525,289 operations/second</li>
+<li>Throwing a new <code>RuntimeException</code> every time was 1,529,637 operations/second</li>
+<li>And <code>RuntimeException</code> with <code>e.getStackTrace()</code> was 328,081 operations/second</li>
+</ol>
+<p>Comparing the <em>flow control</em> <code>static</code> use case #1 with <code>new</code> #3 shows <strong>1000x better performance</strong> for
+<code>StaticException</code>.
+Both the <code>static</code> and <code>new</code> cases are seriously hampered whenever you choose to log the stacktrace.
+The result for <code>staticExceptionAndGetStacktrace</code> is surprising, because the only additional operation is calling
+<code>clone()</code>
+on our empty <code>StackTraceElement[]</code> array. Long call stacks were not simulated with the benchmarks either.</p>
+<p>Above benchmark code available at
+<a href="https://github.com/travishaagen/blog-static-exceptions-for-flow-control">https://github.com/travishaagen/blog-static-exceptions-for-flow-control</a></p>
+<h2 id="final-thoughts">Final Thoughts</h2>
+<p>Throwing exceptions has a cost in the JVM. For optimal performance, exceptions should be thrown sparingly.
+When a failure condition is not unexpected, your application's latency and throughput can benefit
+from static exceptions.</p>
+<h2 id="references">References</h2>
+<ol>
+<li>Maurer, N. (2013, November 9). The hidden performance costs of instantiating Throwables. The Thoughts of Norman
+Maurer. <a href="http://normanmaurer.me/blog/2013/11/09/The-hidden-performance-costs-of-instantiating-Throwables/">http://normanmaurer.me/blog/2013/11/09/The-hidden-performance-costs-of-instantiating-Throwables/</a></li>
+<li>Why Consuming Stack Traces is Noticeably Slower in Java 11 Compared to Java 8: JMH Benchmark Results.
+(2025, November 26). javaspring.net.
+<a href="https://www.javaspring.net/blog/consuming-stack-traces-noticeably-slower-in-java-11-than-java-8/">https://www.javaspring.net/blog/consuming-stack-traces-noticeably-slower-in-java-11-than-java-8/</a></li>
+</ol>
+
+  
+  
+  <footer class="s">
+    Tags: <a href='https://travishaagen.github.io/tags/java'>Java</a>, <a href='https://travishaagen.github.io/tags/kotlin'>Kotlin</a>, <a href='https://travishaagen.github.io/tags/jvm'>JVM</a>, <a href='https://travishaagen.github.io/tags/garbage-collection'>garbage collection</a>, <a href='https://travishaagen.github.io/tags/latency'>latency</a>, <a href='https://travishaagen.github.io/tags/performance'>performance</a>, <a href='https://travishaagen.github.io/tags/netty'>Netty</a>
+  </footer>
+  
+  
+</article>
+</main>
+    <hr>
+    <footer class="s">
+        <span>© Travis Haagen</span>
+        <span>Feeds: <a href="https://travishaagen.github.io/atom.xml">Atom</a> · <a href="https://travishaagen.github.io/rss.xml">RSS</a></span>
+    </footer>
+    
+    
+    
+    <script>document.querySelectorAll('article img[srcset]').forEach(i=>{if(i.closest('a'))return;i.style.cursor='pointer';i.onclick=()=>{let d=document.createElement('div'),s=i.srcset.split(',').pop().trim().split(' ')[0];d.className='lb';d.innerHTML='<img src="'+s+'">';document.body.style.overflow='hidden';d.onclick=()=>{d.remove();document.body.style.overflow=''};document.body.appendChild(d)}})</script>
+    </body>
+</html>
