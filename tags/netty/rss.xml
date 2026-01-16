@@ -7,7 +7,183 @@
       <generator>Zola</generator>
       <language>en</language>
       <atom:link href="https://travishaagen.github.io/tags/netty/rss.xml" rel="self" type="application/rss+xml"/>
-      <lastBuildDate>Fri, 02 Jan 2026 00:00:00 +0000</lastBuildDate>
+      <lastBuildDate>Fri, 16 Jan 2026 00:00:00 +0000</lastBuildDate>
+      <item>
+          <title>Backpressure in Client-Server Applications</title>
+          <pubDate>Fri, 16 Jan 2026 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://travishaagen.github.io/posts/backpressure-in-client-server-applications/</link>
+          <guid>https://travishaagen.github.io/posts/backpressure-in-client-server-applications/</guid>
+          <description xml:base="https://travishaagen.github.io/posts/backpressure-in-client-server-applications/">&lt;p&gt;Backpressure, in client-server applications, is accomplished when a client adjusts its transmission of
+messages in response to a server that has slowed its processing of messages.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;stuck-in-traffic&quot;&gt;Stuck in Traffic&lt;&#x2F;h2&gt;
+&lt;p&gt;Ideally, when a networked client connects to a server, messages are sent at maximum speed and responses are likewise
+returned quickly. To handle more client traffic we scale horizontally by adding additional server instances and
+our long-tail latency metrics are stable over time. However, in most real world applications the server is not a
+monolith unto itself and will make internal requests to relational databases and external APIs with unpredictable
+performance characteristics.&lt;&#x2F;p&gt;
+&lt;p&gt;Timeouts are essential for achieving resiliency. When a timeout is reached, the client disconnects and potentially
+tries again until it gives up. The absence of sensible timeouts results in resource consumption (e.g., network sockets,
+memory, threads) and conditions resembling a traffic jam. In a healthy system both the client and server will monitor
+connections and proactively timeout.&lt;&#x2F;p&gt;
+&lt;p&gt;Constantly connecting and disconnecting, in the face of server instability, has a cost. On average, it takes longer to
+establish a network connection, and negotiate a secure socket, than to issue requests and responses. An
+alternative is for the client to respond to &lt;em&gt;backpressure&lt;&#x2F;em&gt; from the server by keeping the connection open and only
+sending data when the server is ready to accept it. Instead of a chaotic traffic jam, the stream of messages is like a
+cargo train, with slow-downs anticipated.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;backpressure&quot;&gt;Backpressure&lt;&#x2F;h2&gt;
+&lt;p&gt;The Transmission Control Protocol (TCP) considers backpressure as part of the specification.
+“&lt;a href=&quot;https:&#x2F;&#x2F;sumofbytes.com&#x2F;blog&#x2F;understanding-tcp-protocol-and-backpressure&#x2F;&quot;&gt;Understanding TCP Protocol and Backpressure&lt;&#x2F;a&gt;
+”¹ does a nice job summarizing the key ideas.&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;ul&gt;
+&lt;li&gt;TCP implements flow control to ensure that the sender does not overwhelm the receiver with data. It uses a sliding
+window mechanism to control the number of unacknowledged segments that can be sent at a time.&lt;&#x2F;li&gt;
+&lt;li&gt;The receiver advertises its window size, indicating the amount of data it can currently accept.&lt;&#x2F;li&gt;
+&lt;li&gt;The sender adjusts the rate of transmission based on the receiver’s window size, ensuring efficient data transfer.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;In practice, for backpressure to work effectively, both the client and the server should adhere to some specific design
+principles:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Client &amp;amp; Server
+&lt;ul&gt;
+&lt;li&gt;Connection should be long-lived (e.g., HTTP keep-alive, websocket, etc.)&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;Client
+&lt;ul&gt;
+&lt;li&gt;Networking libraries should indicate when the socket is &lt;em&gt;writable&lt;&#x2F;em&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Timeouts should be tuned to allow for backpressure&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;Server
+&lt;ul&gt;
+&lt;li&gt;Separate thread-pools should handle,
+&lt;ul&gt;
+&lt;li&gt;Accepting network connections&lt;&#x2F;li&gt;
+&lt;li&gt;Sending and receiving data over established connections&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;Slow or idle clients should be detected and pruned&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Let us consider an asynchronous, event-driven application architecture. On the server a single thread can effectively
+handle the job of accepting network connections. Once connected, another thread, or pool of threads, can read requests
+and send responses. These &quot;worker threads&quot; must take care not block on I&#x2F;O or mutexes. We read the request data, make
+asynchronous calls to internal services, and during those asynchronous calls our worker threads may service other
+requests. Once our asynchronous work is complete, and if the client is still connected, we write a response. This
+&lt;em&gt;could&lt;&#x2F;em&gt; be backpressure at work, but how can we know for certain? Unfortunately, most of us use software frameworks
+that make it difficult to know what is going on beneath the surface.&lt;&#x2F;p&gt;
+&lt;h1 id=&quot;an-experiment&quot;&gt;An Experiment&lt;&#x2F;h1&gt;
+&lt;p&gt;For this article we created a project at
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;travishaagen&#x2F;blog-backpressure&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;travishaagen&#x2F;blog-backpressure&lt;&#x2F;a&gt;. It&#x27;s only
+dependency is &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;netty&#x2F;netty&quot;&gt;Netty&lt;&#x2F;a&gt;, which is an event-driven abstraction over Java&#x27;s internal
+sockets and byte buffers. To prove to ourselves that backpressure is occurring, the application establishes a
+single websocket connection. The client has a Netty event-loop with a single thread.
+Likewise, the server has a single-threaded connection acceptor and a single threaded worker-pool, which attempts to
+write to a bounded queue of size 1. A consumer thread reads from the bounded queue at a slow rate. When the queue
+is full, we cannot write to it, so we stop reading data. When we stop reading, the client is informed that
+the server cannot accept more data, which causes the client to stop writing. This is backpressure.&lt;&#x2F;p&gt;
+
+
+
+
+&lt;img alt=&quot;Client-Server Diagram&quot; title=&quot;Client-Server Diagram&quot; src=&quot;https:&#x2F;&#x2F;travishaagen.github.io&#x2F;processed_images&#x2F;client_server_diagram.339956e9a780a34d.png&quot; srcset=&quot;https:&#x2F;&#x2F;travishaagen.github.io&#x2F;processed_images&#x2F;client_server_diagram.b7fdc2d9cd905bf0.png 512w, https:&#x2F;&#x2F;travishaagen.github.io&#x2F;processed_images&#x2F;client_server_diagram.339956e9a780a34d.png 1024w, https:&#x2F;&#x2F;travishaagen.github.io&#x2F;processed_images&#x2F;client_server_diagram.1b5220834e6f7005.png 2048w&quot; class=&quot;&quot; &#x2F;&gt;
+
+&lt;p&gt;Every network connection establishes a
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;netty&#x2F;netty&#x2F;blob&#x2F;4.2&#x2F;transport&#x2F;src&#x2F;main&#x2F;java&#x2F;io&#x2F;netty&#x2F;channel&#x2F;Channel.java&quot;&gt;Channel&lt;&#x2F;a&gt;. A &lt;code&gt;Channel&lt;&#x2F;code&gt;
+has a method called &lt;code&gt;isWritable()&lt;&#x2F;code&gt; with the following documentation,&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Returns &lt;code&gt;true&lt;&#x2F;code&gt; if and only if the I&#x2F;O thread will perform the requested write operation immediately. Any write
+requests made when this method returns &lt;code&gt;false&lt;&#x2F;code&gt; are queued until the I&#x2F;O thread is ready to process the queued write
+requests.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;netty&#x2F;netty&#x2F;blob&#x2F;4.2&#x2F;transport&#x2F;src&#x2F;main&#x2F;java&#x2F;io&#x2F;netty&#x2F;channel&#x2F;WriteBufferWaterMark.java&quot;&gt;WriteBufferWaterMark&lt;&#x2F;a&gt;
+can be used to configure on which condition the write buffer would cause this channel to change writability.&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;In our &lt;code&gt;WebSocketClient&lt;&#x2F;code&gt; you can see that, in a loop, we increment a 64-bit integer and only write it to the channel
+when writable. The client is detecting and adapting to a full write buffer.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;text&quot; class=&quot;language-text z-code&quot;&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;while (!group.isShuttingDown()) {
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    &#x2F;&#x2F; will not write, when the write buffer watermark is full
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    if (ch.isWritable()) {
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;        var buf = allocator.buffer(Long.BYTES, Long.BYTES);
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;        buf.writeLong(writeCounter++);
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;        var frame = new BinaryWebSocketFrame(buf);
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;        ch.writeAndFlush(frame);
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    } else {
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;        &#x2F;&#x2F; we&amp;#39;re in a spin-loop, so yield to other threads
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;        Thread.yield();
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    }
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;}
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;On the server, to control our experiment, we create a bounded queue of size 1.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;text&quot; class=&quot;language-text z-code&quot;&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;var consumerQueue = new LinkedBlockingQueue&amp;lt;Long&amp;gt;(1);
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;We then pass the queue to a &quot;consumer thread&quot; which reads from it at a slow pace, to simulate a backlog
+of work.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;text&quot; class=&quot;language-text z-code&quot;&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;while (true) {
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    var value = consumerQueue.take();
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    &#x2F;&#x2F; simulate consuming the queue more slowly than the incoming event rate
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    Thread.sleep(0, 250_000);
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;}
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;We also pass the queue to our &lt;code&gt;WebSocketFrameHandler&lt;&#x2F;code&gt;. It reads from the &lt;code&gt;Channel&lt;&#x2F;code&gt; and will spin in a loop
+until it can write to the queue. It does not perform any additional reads until the data is written, which causes
+backpressure.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;text&quot; class=&quot;language-text z-code&quot;&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;var msg = frame.content().readLong();
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;if (!consumerQueue.offer(msg)) {
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    while (!consumerQueue.offer(msg)) {
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;        &#x2F;&#x2F; yield to other threads while we try to write to the bounded queue
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;        Thread.yield();
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;    }
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;}
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;When we run the application we&#x27;ll see an output similar to the following. The &lt;code&gt;Wrote&lt;&#x2F;code&gt; lines show the number of messages
+written to the socket and &lt;code&gt;Consumed&lt;&#x2F;code&gt; shows the count of messages read by the server&#x27;s &quot;consumer thread&quot;.
+Note that, to save space, only the last consecutive &lt;code&gt;Wrote&lt;&#x2F;code&gt;&#x2F;&lt;code&gt;Consumed&lt;&#x2F;code&gt; lines are shown below.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;shell&quot; class=&quot;language-shell z-code&quot;&gt;&lt;code class=&quot;language-shell&quot; data-lang=&quot;shell&quot;&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;% .&#x2F;gradlew runApp
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;&amp;gt; Task :runApp
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Consumed:       0
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Wrote:          100000
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Consumed:       60000
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Wrote:          120000
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Consumed:       85000
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Wrote:          150000
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Consumed:       105000
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Wrote:          170000
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Consumed:       125000
+&lt;&#x2F;span&gt;&lt;span class=&quot;z-text z-plain&quot;&gt;Wrote:          190000
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;When we observe the &lt;code&gt;loopback&lt;&#x2F;code&gt; interface in &lt;a href=&quot;https:&#x2F;&#x2F;www.wireshark.org&quot;&gt;Wireshark&lt;&#x2F;a&gt; and set the filter to
+&lt;code&gt;tcp.window_size == 0&lt;&#x2F;code&gt; we see that the TCP window drops to zero multiple times. This is what causes the client to stop
+writing.&lt;&#x2F;p&gt;
+
+
+
+
+&lt;img alt=&quot;Wireshark Screenshot&quot; title=&quot;Wireshark Screenshot&quot; src=&quot;https:&#x2F;&#x2F;travishaagen.github.io&#x2F;processed_images&#x2F;wireshark_tcp_window_size_zero.df35da8e7a9c83e9.jpg&quot; srcset=&quot;https:&#x2F;&#x2F;travishaagen.github.io&#x2F;processed_images&#x2F;wireshark_tcp_window_size_zero.3515e21f7a266d38.jpg 512w, https:&#x2F;&#x2F;travishaagen.github.io&#x2F;processed_images&#x2F;wireshark_tcp_window_size_zero.df35da8e7a9c83e9.jpg 1024w, https:&#x2F;&#x2F;travishaagen.github.io&#x2F;processed_images&#x2F;wireshark_tcp_window_size_zero.55e833d656a7b867.jpg 2048w&quot; class=&quot;&quot; &#x2F;&gt;
+
+&lt;h2 id=&quot;final-thoughts&quot;&gt;Final Thoughts&lt;&#x2F;h2&gt;
+&lt;p&gt;Backpressure is an elegant concept in computer networking. As the above experiment shows, both the client and
+server need to actively control reading and writing socket data for it to work properly. Websockets seem particularly
+well suited to applications that seek to control backpressure, because it&#x27;s easy to conceive of inbound messages
+feeding into one queue and outbound messages into another. We hope that this discussion will assist developers in
+thinking about backpressure and how well their libraries and frameworks support it.&lt;&#x2F;p&gt;
+&lt;p&gt;For further reading we suggest
+“&lt;a href=&quot;https:&#x2F;&#x2F;mechanical-sympathy.blogspot.com&#x2F;2012&#x2F;05&#x2F;apply-back-pressure-when-overloaded.html&quot;&gt;Applying Back Pressure When Overloaded&lt;&#x2F;a&gt;
+”² by Martin Thompson.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;references&quot;&gt;References&lt;&#x2F;h2&gt;
+&lt;ol&gt;
+&lt;li&gt;Kumar, A. (2023, August 6). Understanding TCP Protocol and Backpressure. Sum Of Bytes.
+&lt;a href=&quot;https:&#x2F;&#x2F;sumofbytes.com&#x2F;blog&#x2F;understanding-tcp-protocol-and-backpressure&#x2F;&quot;&gt;https:&#x2F;&#x2F;sumofbytes.com&#x2F;blog&#x2F;understanding-tcp-protocol-and-backpressure&#x2F;&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Thompson, M. (2012, May 19). Applying Back Pressure When Overloaded. Mechanical Sympathy.
+&lt;a href=&quot;https:&#x2F;&#x2F;mechanical-sympathy.blogspot.com&#x2F;2012&#x2F;05&#x2F;apply-back-pressure-when-overloaded.html&quot;&gt;https:&#x2F;&#x2F;mechanical-sympathy.blogspot.com&#x2F;2012&#x2F;05&#x2F;apply-back-pressure-when-overloaded.html&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+</description>
+      </item>
       <item>
           <title>Static Exceptions for Flow Control</title>
           <pubDate>Fri, 02 Jan 2026 00:00:00 +0000</pubDate>
@@ -88,7 +264,7 @@ The bulk of the cost comes from &lt;code&gt;Throwable.fillInStackTrace()&lt;&#x2
 libraries and frameworks that we use to make life easier.&lt;&#x2F;p&gt;
 &lt;p&gt;Fortunately, there is a solution. We can preinitialize exceptions and either generate the call stack &lt;em&gt;once&lt;&#x2F;em&gt;, or
 provide an empty stack. I first learned about this technique from Norman Maurer&#x27;s blog post
-entitled “&lt;a href=&quot;http:&#x2F;&#x2F;normanmaurer.me&#x2F;blog&#x2F;2013&#x2F;11&#x2F;09&#x2F;The-hidden-performance-costs-of-instantiating-Throwables&#x2F;&quot;&gt;The hidden performance costs of instantiating Throwables&lt;&#x2F;a&gt;”.
+entitled “&lt;a href=&quot;http:&#x2F;&#x2F;normanmaurer.me&#x2F;blog&#x2F;2013&#x2F;11&#x2F;09&#x2F;The-hidden-performance-costs-of-instantiating-Throwables&#x2F;&quot;&gt;The hidden performance costs of instantiating Throwables&lt;&#x2F;a&gt;”¹.
 Norman is one of the creators of &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;netty&#x2F;netty&quot;&gt;Netty&lt;&#x2F;a&gt; which is an abstraction over Java&#x27;s internal
 sockets and byte buffers. It&#x27;s a technique that has been used sparingly in Netty itself.&lt;&#x2F;p&gt;
 &lt;p&gt;However, if you do it wrong, it can lead to problems. Let&#x27;s look at this constructor for &lt;code&gt;Throwable&lt;&#x2F;code&gt;,&lt;&#x2F;p&gt;
@@ -139,7 +315,7 @@ every time an &lt;code&gt;Exception&lt;&#x2F;code&gt; passes through.&lt;&#x2F;p
 &lt;p&gt;Norman included some &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;openjdk&#x2F;jmh&quot;&gt;Java Microbenchmark Harness (JMH)&lt;&#x2F;a&gt; results in the
 beforementioned &lt;a href=&quot;http:&#x2F;&#x2F;normanmaurer.me&#x2F;blog&#x2F;2013&#x2F;11&#x2F;09&#x2F;The-hidden-performance-costs-of-instantiating-Throwables&#x2F;&quot;&gt;blog post&lt;&#x2F;a&gt;.
 I also ran across
-“&lt;a href=&quot;https:&#x2F;&#x2F;www.javaspring.net&#x2F;blog&#x2F;consuming-stack-traces-noticeably-slower-in-java-11-than-java-8&#x2F;&quot;&gt;Why Consuming Stack Traces is Noticeably Slower in Java 11 Compared to Java 8: JMH Benchmark Results.&lt;&#x2F;a&gt;”
+“&lt;a href=&quot;https:&#x2F;&#x2F;www.javaspring.net&#x2F;blog&#x2F;consuming-stack-traces-noticeably-slower-in-java-11-than-java-8&#x2F;&quot;&gt;Why Consuming Stack Traces is Noticeably Slower in Java 11 Compared to Java 8: JMH Benchmark Results.&lt;&#x2F;a&gt;”²
 It makes some interesting points and I didn&#x27;t realize that Java 11 introduced a change that was meant to improve
 average performance by lazily traversing the call stack for logging. Because of this lazy traversal, I included
 some additional &lt;code&gt;*AndGetStacktrace&lt;&#x2F;code&gt; JMH benchmarks below.&lt;&#x2F;p&gt;

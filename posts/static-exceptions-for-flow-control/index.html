@@ -210,7 +210,7 @@ The bulk of the cost comes from <code>Throwable.fillInStackTrace()</code> which 
 libraries and frameworks that we use to make life easier.</p>
 <p>Fortunately, there is a solution. We can preinitialize exceptions and either generate the call stack <em>once</em>, or
 provide an empty stack. I first learned about this technique from Norman Maurer's blog post
-entitled “<a href="http://normanmaurer.me/blog/2013/11/09/The-hidden-performance-costs-of-instantiating-Throwables/">The hidden performance costs of instantiating Throwables</a>”.
+entitled “<a href="http://normanmaurer.me/blog/2013/11/09/The-hidden-performance-costs-of-instantiating-Throwables/">The hidden performance costs of instantiating Throwables</a>”¹.
 Norman is one of the creators of <a href="https://github.com/netty/netty">Netty</a> which is an abstraction over Java's internal
 sockets and byte buffers. It's a technique that has been used sparingly in Netty itself.</p>
 <p>However, if you do it wrong, it can lead to problems. Let's look at this constructor for <code>Throwable</code>,</p>
@@ -261,7 +261,7 @@ every time an <code>Exception</code> passes through.</p>
 <p>Norman included some <a href="https://github.com/openjdk/jmh">Java Microbenchmark Harness (JMH)</a> results in the
 beforementioned <a href="http://normanmaurer.me/blog/2013/11/09/The-hidden-performance-costs-of-instantiating-Throwables/">blog post</a>.
 I also ran across
-“<a href="https://www.javaspring.net/blog/consuming-stack-traces-noticeably-slower-in-java-11-than-java-8/">Why Consuming Stack Traces is Noticeably Slower in Java 11 Compared to Java 8: JMH Benchmark Results.</a>”
+“<a href="https://www.javaspring.net/blog/consuming-stack-traces-noticeably-slower-in-java-11-than-java-8/">Why Consuming Stack Traces is Noticeably Slower in Java 11 Compared to Java 8: JMH Benchmark Results.</a>”²
 It makes some interesting points and I didn't realize that Java 11 introduced a change that was meant to improve
 average performance by lazily traversing the call stack for logging. Because of this lazy traversal, I included
 some additional <code>*AndGetStacktrace</code> JMH benchmarks below.</p>

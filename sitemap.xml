@@ -7,6 +7,10 @@
         <loc>https://travishaagen.github.io/posts/</loc>
     </url>
     <url>
+        <loc>https://travishaagen.github.io/posts/backpressure-in-client-server-applications/</loc>
+        <lastmod>2026-01-16</lastmod>
+    </url>
+    <url>
         <loc>https://travishaagen.github.io/posts/static-exceptions-for-flow-control/</loc>
         <lastmod>2026-01-02</lastmod>
     </url>
@@ -15,6 +19,9 @@
     </url>
     <url>
         <loc>https://travishaagen.github.io/tags/</loc>
+    </url>
+    <url>
+        <loc>https://travishaagen.github.io/tags/backpressure/</loc>
     </url>
     <url>
         <loc>https://travishaagen.github.io/tags/garbage-collection/</loc>
